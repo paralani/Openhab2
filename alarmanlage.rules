@@ -1,0 +1,39 @@
+import org.openhab.core.library.types.*
+import org.openhab.model.script.actions.*
+//import org.openhab.core.persistence.*
+//import org.openhab.model.script.actions.Timer
+//import java.lang.Math
+//import java.util.concurrent.locks.ReentrantLock
+//import org.openhab.core.library.types.DecimalType
+
+var Timer lightsBlinkingTimer = null
+
+//Verwendete Items: Alarm_Erkannt = Bewegung erkannt, AlarmAnlage_Ein_Aus = Alarm Scharf/Aus, Lichter_Ein_Aus = Ausgang fuer Blink-Lichter
+
+
+rule "Alam Lights"
+when
+    Item Alarm_Erkannt received command ON
+then
+    if(lightsBlinkingTimer != null) {
+        lightsBlinkingTimer.cancel
+        lightsBlinkingTimer = null
+    }
+
+    lightsBlinkingTimer = createTimer(now.plusSeconds(1), [|
+        Lichter_Ein_Aus.sendCommand(if(Lichter_Ein_Aus.state == ON) OFF else ON)
+        lightsBlinkingTimer.reschedule(now.plusSeconds(1))
+    ]
+end
+
+rule "Stop Alarm"
+when
+    Item AlarmAnlage_Ein_Aus received command OFF
+then
+    if(lightsBlinkingTimer != null) {
+        lightsBlinkingTimer.cancel
+        lightsBlinkingTimer = null
+    }
+	sendCommand(Lichter_Ein_Aus, OFF)
+
+end
