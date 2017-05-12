@@ -1,0 +1,196 @@
+Installation Ubuntu Server und Openhab 2: 			02.03.2017   AG
+
+Virtuelle Maschine:
+- Virtual-Box, VirtualBox Extension Pack und Ubuntu_Server.iso laden
+- Virtual-Box installieren und das Extension Pack über "Datei-Einstellungen-Zusatzpakete" hinzufügen
+- Ubuntu als VM anlegen und installieren
+
+- sudo apt-get update
+- sudo apt-get install virtualbox-guest-additions-iso
+
+
+Gasterweiterung:
+
+Here are the steps I took:
+
+Locate VBoxGuestAdditions.iso on your host (in my case, C:\Program Files\Oracle\VirtualBox\VBoxGuestAdditions.iso).
+Copy VBoxGuestAdditions.iso to your guest (in my case, I used WinSCP).
+In the terminal for the guest mount the ISO using the following:
+
+sudo mkdir /media/GuestAdditionsISO
+
+sudo mount -o loop path/to/VBoxGuestAdditions.iso /media/GuestAdditionsISO
+At this point you'll probably get a message that the ISO has been mounted as READ-ONLY. That's perfectly fine. If you change into the directory /media/GuestAdditionsISO you should see VBoxLinuxAdditions.run and it should be executable:
+
+cd /media/GuestAdditionsISO
+
+ls -l
+Now just run VBoxLinuxAdditions.run:
+
+sudo ./VBoxLinuxAdditions.run
+
+Danach funktioniert auch der Gemeinsame Ordner.
+
+
+
+USB-Stick (ro=lesen, rw=lesen/schreiben):
+- USB Stick darf nicht als Festplatte erkannt werden, sonst anderer Stick benutzen
+- Verzeichnis /media/usbstick anlegen
+- mount -t vfat -o rw /dev/sdb1 /media/usbstick
+
+
+
+
+Pakete löschen:
+- sudo apt-get remove --purge Paketname
+- sudo apt-get clean
+
+
+Root Zugang:
+1) Sich mit dem normalen user anmelden
+2) sudo -i
+3) sudo passwd root
+Neues Passwort eingeben: 
+
+
+
+Midnight Commander
+- sudo apt-get install mc
+- mit "sudo mc" können Dateien mit Schreibrechte editiert werden
+
+SSH-Server
+- sudo apt install openssh-server
+- Danach ist die VM und ihrer IP per SSH (PuTTY) erreichbar.
+- IP-Adresse mit if-config anschauen
+- Die Datei /etc/network/interfaces kann in einem Editor mit Root-Rechten bearbeitet werden
+
+
+Root per SSH oder WinSCP verbinden:
+
+- /etc/ssh/sshd_config editieren
+- PermitRootLogin Yes hinzufügen (anderer Eintrag PermitRootLogin mit # auskommentieren)
+- service ssh restart
+
+
+
+
+## Ethernet Schnittstelle 0
+auto eth0  
+# Beim Bootvorgang automatisch starten
+iface eth0 inet static
+    address 192.168.120.48   
+    netmask 255.255.255.0  
+    gateway 192.168.120.251
+
+
+Openhab 2 installieren:
+
+http://docs.openhab.org/installation/linux.html
+
+
+Java installieren:
+echo "deb http://ppa.launchpad.net/webupd8team/java/ubuntu xenial main" | sudo tee /etc/apt/sources.list.d/webupd8team-java.list
+echo "deb-src http://ppa.launchpad.net/webupd8team/java/ubuntu xenial main" | sudo tee -a /etc/apt/sources.list.d/webupd8team-java.list
+sudo apt-key adv --keyserver hkp://keyserver.ubuntu.com:80 --recv-keys EEA14886
+sudo apt-get update
+sudo apt-get install oracle-java8-installer
+sudo apt-get install oracle-java8-set-default
+
+Openhab 2 stable installieren:
+wget -qO - 'https://bintray.com/user/downloadSubjectPublicKey?username=openhab' | sudo apt-key add -
+echo 'deb http://dl.bintray.com/openhab/apt-repo2 stable main' | sudo tee /etc/apt/sources.list.d/openhab2.list
+sudo apt-get update
+sudo apt-get install openhab2
+
+sudo apt-get install openhab2-addons
+
+
+
+Openhab starten und in Systemstart einbinden:
+sudo systemctl start openhab2.service
+sudo systemctl status openhab2.service
+  
+sudo systemctl daemon-reload
+sudo systemctl enable openhab2.service
+
+
+Openhab 2 konfigurieren:
+- mit Browser die IP eingeben z.B. 192.168.120.48:8080
+- KNX Binding installieren
+
+
+KNX Zugang einrichten:
+
+- /etc/openhab2/services/knx.cfg
+
+knx:ip=\<IP Adresse des KNX Gateway>
+knx:type=TUNNEL (ROUTER Modus läuft nicht auf allen Geräten)
+knx.localIp=\<IP Adresse des PC auf dem die openhab-runtime läuft>
+
+ignorelocalevents=true
+port=6720
+
+compatibilityOH2=true
+
+
+Items Datei bearbeiten:
+- /etc/openhab2/items/
+
+Allgemein:
+
+itemtype itemname ["labeltext"] [<iconname>] [(group1, group2, ...)] [["tag1", "tag2", ...]] [{bindingconfig}]
+
+Number LivingRoom_Temperature "The Temperature is [%.1f °C]" <temperature> (gTemperature, gLivingRoom) ["TargetTemperature"] {knx="1/0/15+0/0/15"}
+
+Erklärung:
+- of type Number
+- with name LivingRoom_Temperature
+- formatting its output in format %.1f °C (See Formatting section for syntax explanation)
+- displaying icon temperature
+- belonging to groups gTemperature and gLivingRoom
+- tagged as a thermostat (“TargetTemperature”) for usage with I/O addons like Hue Emulation
+- bound to the openHAB binding knx with write group address 1/0/15 and listening group address 0/0/15
+
+
+
+
+Beispiele:
+
+Number Temperature_GF_Living "Temperature [%.1f °C]" <temperature> (GF_Living) {knx="1/0/15+0/0/15"}
+
+Erklärung:
+- of type Number
+- with name Temperature_GF_Living
+- formatting its output in format xx.y °C
+- displaying icon temperature
+- belonging to group GF_Living
+- bound to openHAB binding knx with write group address 1/0/15 and listening group address 0/0/15
+
+
+Trick Autoupdate bei Probleme mit Echos:
+Switch C_A "Switch A" (C_Group) {autoupdate="true", knx="7/0/32+<7/0/132"}
+
+
+Switch Geraet_OG3_Chef_SchreibtischFreigabe "Schreibtisch Freigabe" (OG3_Chef, Geraete) {autoupdate="true", knx="<(60)2/2/239"}
+
+openHAB2 reads every 60 seconds the knx-adr "2/2/239". From that point of view everything seems to work fine.
+
+
+Beispiel Gruppen:
+Group  All
+Group  gSensor             (All)
+Group  gTemperature        (gSensor)
+
+Number  Sensor_Temperature  "The Temperature is [%.1f °C]"  <temperature>  (gTemperature)  {knx="1/0/15+0/0/15"}
+
+Das item Sensor_Temperature ist Mitglied der Gruppe gTemperature, welche selber Mitglied der Gruppe gSensor, 
+welche wiederum Mitglied der Gruppe All ist.
+Ein item darf nur einmal in einer Gruppe sein!
+
+
+Dimmer TestDimmer "TestDimmer [%s]" (Lights) { knx="1/3/20+0/3/20, 1/3/21, 1/3/22+0/3/22+0/8/15" }
+Switch Licht_OG_Kinderzimmer1   "Licht Kinderzimmer1"   (OG_Kinderzimmer1)  {knx="2/2/1"}
+
+
+
+

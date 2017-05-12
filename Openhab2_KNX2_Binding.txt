@@ -1,0 +1,25 @@
+Openhab 2 - Binding KNX 2 installieren
+
+https://community.openhab.org/t/how-to-install-a-2-x-binding-manually-in-this-case-knx/12581/41
+
+
+
+- Datei "org.openhab.binding.knx-2.0.0-20170310.jar" in Verzeichnis /usr/share/openhab2/addons/ kopieren
+- alts Binding KNX 1.9 deinstallieren
+
+Konsole:
+- sudo systemctl stop openhab2.service
+- cd /usr/share/openhab2
+- ./start.sh
+
+Openhab Konsole:
+- feature:install openhab-transport-serial
+- feature:list | grep knx
+- bundle:list -s | grep knx
+
+Openhab -> neustarten
+
+-> PaperUI: Configuration -> Bindings
+
+
+15.03.17   AG
